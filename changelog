@@ -1,3 +1,9 @@
+20220304T2303Z:
+
+- Removed some outdated comments
+
+- Merged timing.c into context_switch_timing.c
+
 20220304T2244Z:
 
 - Minor mods to the ucontext-based implementation
