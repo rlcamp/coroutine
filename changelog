@@ -1,0 +1,131 @@
+20220304T2244Z:
+
+- Minor mods to the ucontext-based implementation
+
+- Deleted the semaphore-based implementation, which is not sufficiently different from the pthread-and-mutex implementation to continue to be actively maintained
+
+- Deleted some other ancillary stuff
+
+20210802T1858Z:
+
+- Modified the ucontext-based implementation to store neither the active nor inactive ucontext_t within the struct channel itself. A pointer to the inactive context is stored within the struct channel, and the actual structs are stored on the respective call stacks of the inactive threads. This somewhat alleviates the size requirement for the stack-and-struct-channel allocation.
+
+- Added a pthread-and-semaphore-based fallback implementation, which is faster than the pthread-and-mutex implementation, at least on Linux with musl. On macOS the semaphores are implemented using a shim around the equivalent libdispatch functionality, which is slow.
+
+20210730T0239Z:
+
+- Added a ucontext-based fallback implementation, which implements the same API using the previously-POSIX ucontext mechanism. Note that if using the (very deprecated) macOS implementation of ucontext, this is only about twice as fast as the pthread-based version on macOS, likely due to the undesired saving and restoring of the signal mask upon context switching. If using libucontext, only aarch64 and x86_64 are currently supported, due to lack of libucontext saving and restoring fp regs on all hardware.
+
+- Edited cotests.c to use a larger child-stack-on-parent-stack due to the massive size of ucontext_t on aarch64 if using libucontext
+
+- Renamed "comparison_with_pthreads" to "context_switch_timing" and changed it to a simple timing of round-trip context switches of whatever implementation is selected
+
+20210717T2029Z:
+
+- Added a pthread-based (non-automatic) fallback implementation, which implements the same API and behaves identically (but a roughly 1000x speed hit to the context switching and no hard-realtime guarantees). Note that faster implementations of the generator function portion of the API are possible if it is known that a child is not yielding pointers to stack variables - this fallback implementation is the most conservative version.
+
+20210714T2007Z:
+
+- Fixed bug on 32-bit arm revealed by previous mod replacing coroutine_switch() function with SWAP_CONTEXT() macro. More testing is probably needed to verify similar breakage on other platforms was not being alleviated by coroutine_switch() being an actual function
+
+20210630T0314Z:
+
+- Minor mod to how coroutine_switch() works, with no impact to performance of yield()/from()
+
+- Added quindar tone example, requires SDL2 as implemented, but can be adapted to any callback-based audio framework
+
+20200916T0059Z:
+
+- Added mips support
+
+20200824T1453Z:
+
+- Added cortex-m0+ support
+
+20200315T1837Z:
+
+- Support for ppc64 finally
+
+20200315T0619Z:
+
+- Rewrite of bootstrapping, added avr support
+
+- Changes to api for non-malloc version
+
+20200215T0401Z:
+
+- Removed speedtest
+
+- Added readme.md
+
+- Fixed "b" in morse table in demo
+
+20200206T0053Z:
+
+- Proper fix for the LTO stuff. The ASM thunks used to kickoff a new coroutine are now contained within a void * thunk(void) function, rather than living at file scope where LTO can make bad decisions about them. Calling thunk() from C code returns the address of the beginning of the actual thunk.
+
+20200205T0609Z:
+
+- Workaround for lto race condition in gcc 6.3.x on x86_64
+
+20191121T1731Z:
+
+- powerpc is currently marked unsupported and will generate a compile-time error
+
+- Tweaked i386 code to allow position independence
+
+- Single-buffer version
+
+20191108T0313Z:
+
+- cortex-m4 bare metal support
+
+20191102T2151Z:
+
+- i386 support
+
+20191030T0657Z:
+
+- Simplified platform-specific code by using an asm thunk so that only a "swap context" function is needed, and the bootstrapping can reuse it.
+
+20191030T0200Z:
+
+- Fixed aarch64 not working properly after internal rewrite
+
+20191028T0601Z:
+
+- Significant internal rewrite to not use setjmp, heavily contributed to by Rich Felker
+
+20191023T0354Z:
+
+- Hack to get i386 working
+
+20191021T2031Z:
+
+- Added a bunch of new architectures
+
+20191008T0355Z:
+
+- Modded alignment of coroutine stack on parent stack to work on Catalina
+
+20190924T2100Z:
+
+- Fixed a problem in the inline assembly constraints that resulted in a miscompilation at one optimisation level on aarch64
+
+20180729T0400Z:
+
+- Added comorse example
+
+- Added coroutine_create_given_memory() interface which allows the entire API to be used as before, but without the internal call to malloc(), and (optionally) without the automatic free() when the coroutine exits. This allows a coroutine to be started and stopped, not merely interacted with, within a hard-realtime context. The interface can also be used simply to allocate a smaller-than-usual call stack when it is known that a given coroutine does not need the (rather large) default call stack size. 
+
+20180727T1826Z:
+
+- "make check" target
+
+20180727T1808Z:
+
+- Support for Linux x86_64 without thread-local storage
+
+20180725T2250Z:
+
+- Initial commit
