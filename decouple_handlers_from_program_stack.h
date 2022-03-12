@@ -1,0 +1,1 @@
+void decouple_handlers_from_program_stack(void);
