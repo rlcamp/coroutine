@@ -1,6 +1,10 @@
+20220312T2018Z:
+
 - Fixed ifdef name for system ucontext option
 
 - More comment cleanup
+
+- Added decouple_handlers_from_program_stack
 
 20220304T2303Z:
 
