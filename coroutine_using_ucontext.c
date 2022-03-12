@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #endif
 
-#ifndef USE_LIBC_UCONTEXT
+#ifndef USE_SYSTEM_UCONTEXT
 #include <libucontext/libucontext.h>
 #define ucontext_t libucontext_ucontext_t
 #define getcontext libucontext_getcontext
@@ -30,8 +30,6 @@
 #warning attempting to use system ucontext
 #include <ucontext.h>
 #endif
-
-/* end architecture specific macros */
 
 /* sentinel value */
 static void * const not_filled = &(void *){ NULL };
