@@ -40,9 +40,11 @@ check : cotests
 	@(./cotests 2>/dev/null | openssl md5 | grep bfdad74e6bc7bc9ab906212371eb9f80 1>/dev/null && echo pass) || echo fail
 
 logstamp :
-	echo `date -u +%Y%m%dT%H%MZ:` > /tmp/a.txt && echo "" >> /tmp/a.txt && touch changelog && cat changelog >> /tmp/a.txt && cat /tmp/a.txt > changelog && rm /tmp/a.txt
+# if the head of the changelog is not a timestamp, prepend one, otherwise do nothing
+	@(head -n1 changelog | grep -e '2*T*Z\:' 1>/dev/null || (echo `date -u +%Y%m%dT%H%MZ:` > /tmp/a.txt && echo "" >> /tmp/a.txt && touch changelog && cat changelog >> /tmp/a.txt && cat /tmp/a.txt > changelog && rm /tmp/a.txt)) || true
 
 PROJDIR=$(notdir $(shell pwd))
 
+# when using this with git, the workflow for a commit should be: add entries to head of changelog; make logstamp; git commit; make dist
 dist : clean logstamp
 	cd .. && COPYFILE_DISABLE=1 tar cjfh ${PROJDIR}_`date -u +%Y%m%dT%H%MZ`'.tar.bz2' --exclude='*xcuser*' --exclude='.DS_Store' ${PROJDIR}/
