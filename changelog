@@ -1,3 +1,7 @@
+20220626T0405Z:
+
+- Fixes for cortex-m
+
 20220313T1951Z:
 
 - Reworked Makefile such that logstamp is a no-op if a timestamp is already at the head of the changlog. This allows "make dist" to in turn play more nicely with git. Specifically, the following things should happen in order: add entries to the changelog, make logstamp, git commit, make dist
