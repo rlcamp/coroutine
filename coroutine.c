@@ -1,26 +1,54 @@
 /*
  Copyright 2015-2022 Richard Campbell
  
- Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+ Permission to use, copy, modify, and/or distribute this software for any purpose with or without
+ fee is hereby granted, provided that the above copyright notice and this permission notice appear
+ in all copies.
  
- THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+ SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+ NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+ THIS SOFTWARE.
  
  Coroutines for generator functions, sequential pipelines, state machines, and other uses in C
  
  Significant conceptual contribution by Rich Felker and others
  Implementation by Richard Campbell
  
- Tested on cortex-m bare metal, avr bare metal, cortex-a7 linux, aarch64 iOS, aarch64 linux, mips, x86_64 darwin, x86_64 linux hardware, others (i386, m68k, riscv, ppc64, sh4, or1k) via qemu
+ Tested on cortex-m bare metal, avr bare metal, cortex-a7 linux, aarch64 iOS, aarch64 linux, mips,
+ x86_64 darwin, x86_64 linux hardware, others (i386, m68k, riscv, ppc64, sh4, or1k) via qemu
  
- The intended use case is where concurrency, but not parallelism, is required, with a possibly very high rate of switching between coroutines, in a possibly hard-realtime context (such as an audio subsystem).
+ The intended use case is where concurrency, but not parallelism, is required, with a possibly very
+ high rate of switching between coroutines, in a possibly hard-realtime context (such as an audio
+ subsystem).
  
- This implementation relies only on a couple platform-specific inline assembly macros, and is therefore useful in uncooperative environments such as iOS or bare metal. The remainder of the implementation is platform-agnostic C.
+ This implementation relies only on a couple platform-specific inline assembly macros, and is
+ therefore useful in uncooperative environments such as iOS or bare metal. The remainder of the
+ implementation is platform-agnostic C.
  
- Unlike protothreads and other stackless methods, each coroutine has its own fully functional call stack, so local variables in the coroutines preserve their values, multiple instances of the same function may be in flight at once, and coroutines may yield from anywhere within the call stack, not just the top level function.
+ Unlike protothreads and other stackless methods, each coroutine has its own fully functional call
+ stack, so local variables in the coroutines preserve their values, multiple instances of the same
+ function may be in flight at once, and coroutines may yield from anywhere within the call stack,
+ not just the top level function.
  
- Unlike pthreads and other kernel-scheduled preemptive multitasking thread implementations, it is extremely cheap to switch between coroutines, and hard-realtime requirements may be met while doing so. Thus, it is possible to have a generator-type coroutine that yields individual audio samples (or small batches of them) to a hard-realtime callback function inside an audio subsystem. It would be possible to implement this API using pthreads, but the cost of switching between coroutines would be many orders of magnitude greater, and it would not be possible to meet hard-realtime deadlines.
+ Unlike pthreads and other kernel-scheduled preemptive multitasking thread implementations, it is
+ extremely cheap to switch between coroutines, and hard-realtime requirements may be met while doing
+ so. Thus, it is possible to have a generator-type coroutine that yields individual audio samples
+ (or small batches of them) to a hard-realtime callback function inside an audio subsystem. It would
+ be possible to implement this API using pthreads, but the cost of switching between coroutines
+ would be many orders of magnitude greater, and it would not be possible to meet hard-realtime
+ deadlines.
  
- This code consists of the coroutine starting and switching primitives, as well as some convenience functions (yield, from) for implementing generator functions, sequential pipelines, and things of that sort. These generator functions may yield a pointer to local storage, a pointer to heap storage (which may or may not be expected to be freed by the yielded-to code), or any nonzero value that can fit within the memory occupied by a void pointer. A coroutine may NOT yield NULL, as this has special meaning to the accepting code (it indicates to a waiting parent that a child function has already returned, or indicates to a waiting child that a parent function wants it to clean up and return).
+ This code consists of the coroutine starting and switching primitives, as well as some convenience
+ functions (yield, from) for implementing generator functions, sequential pipelines, and things of
+ that sort. These generator functions may yield a pointer to local storage, a pointer to heap
+ storage (which may or may not be expected to be freed by the yielded-to code), or any nonzero value
+ that can fit within the memory occupied by a void pointer. A coroutine may NOT yield NULL, as this
+ has special meaning to the accepting code (it indicates to a waiting parent that a child function
+ has already returned, or indicates to a waiting child that a parent function wants it to clean up
+ and return).
  */
 
 #include "coroutine.h"
