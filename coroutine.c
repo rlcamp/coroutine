@@ -155,7 +155,7 @@ ADD_ONE_TO_R4_IF_THUMB \
 "mov sp, %0\n" \
 "mov r6, %1\n" \
 "bx r6\n" \
-".balign 4\n" \
+".balign 4\n" /* thumb-1 requires this additional alignment constraint for adr targets */ \
 "0:\n" \
 : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", NOT_THE_FRAME_POINTER, "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
