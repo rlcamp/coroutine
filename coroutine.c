@@ -134,15 +134,15 @@ asm volatile( \
 #define STACK_ALIGNMENT 16
 
 #if __thumb__
-#if __ARM_ARCH == 7
+#define ADD_ONE_TO_R4_IF_THUMB "add r4, #1\n"
+#else
+#define ADD_ONE_TO_R4_IF_THUMB ""
+#endif
+
+#if __ARM_ARCH == 7 || !__thumb__
 #define NOT_THE_FRAME_POINTER "r7"
 #else
 #define NOT_THE_FRAME_POINTER "r11"
-#endif
-#define ADD_ONE_TO_R4_IF_THUMB "add r4, #1\n"
-#else
-#define NOT_THE_FRAME_POINTER "r7"
-#define ADD_ONE_TO_R4_IF_THUMB ""
 #endif
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
