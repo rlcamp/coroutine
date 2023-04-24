@@ -130,7 +130,7 @@ asm volatile( \
 : "+r"(_buf) : : "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x30", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "cc", "memory"); } while (0)
 
 #elif defined(__arm__)
-#define CONTEXT_BUF_SIZE_BYTES 12
+#define CONTEXT_BUF_SIZE_BYTES 16
 #define STACK_ALIGNMENT 16
 
 #if __thumb__
@@ -139,49 +139,48 @@ asm volatile( \
 #define ADD_ONE_TO_R4_IF_THUMB ""
 #endif
 
-#if __ARM_ARCH == 7 || !__thumb__
-#define NOT_THE_FRAME_POINTER "r7"
-#else
-#define NOT_THE_FRAME_POINTER "r11"
-#endif
-
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r0") = buf; \
 register void * _func asm("r1") = func; \
 asm volatile( \
 "adr r4, 0f\n" \
 ADD_ONE_TO_R4_IF_THUMB \
-"mov r5, sp\n" \
 "str r4, [%0]\n" \
+"mov r5, sp\n" \
 "str r5, [%0, #4]\n" \
-"mov r3, fp\n" \
-"str r3, [%0, #8]\n" \
+"str r7, [%0, #8]\n" \
+"mov r3, r11\n" \
+"str r3, [%0, #12]\n" \
 "mov sp, %0\n" \
 "mov r6, %1\n" \
 "bx r6\n" \
 ".balign 4\n" /* thumb-1 requires this additional alignment constraint for adr targets */ \
 "0:\n" \
-: "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", NOT_THE_FRAME_POINTER, "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+: "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
 #define SWAP_CONTEXT(buf) do { \
 register void * _buf asm("r0") = buf; \
 asm volatile( \
+"ldr r6, [%0, #12]\n" \
+"mov r4, r11\n" \
+"str r4, [%0, #12]\n" \
+"mov r11, r6\n" \
+"ldr r6, [%0, #8]\n" \
+"mov r4, r7\n" \
+"str r4, [%0, #8]\n" \
+"mov r7, r6\n" \
+"ldr r6, [%0, #4]\n" \
+"mov r4, sp\n" \
+"str r4, [%0, #4]\n" \
+"mov sp, r6\n" \
 "ldr r6, [%0]\n" \
-"ldr r1, [%0, #4]\n" \
-"ldr r3, [%0, #8]\n" \
 "adr r4, 0f\n" \
 ADD_ONE_TO_R4_IF_THUMB \
-"mov r5, sp\n" \
 "str r4, [%0]\n" \
-"str r5, [%0, #4]\n" \
-"mov r2, fp\n" \
-"str r2, [%0, #8]\n" \
-"mov fp, r3\n" \
-"mov sp, r1\n" \
 "bx r6\n" \
 ".balign 4\n" \
 "0:\n" \
-: "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", NOT_THE_FRAME_POINTER, "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+: "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
 #elif defined(__i386__)
 
