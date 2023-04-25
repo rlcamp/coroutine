@@ -29,7 +29,7 @@ unsigned long long current_monotonic_time_in_nanoseconds(void) {
 }
 
 
-#define YIELD_COUNT 8388608
+#define YIELD_COUNT 268435456
 
 static void child_that_yields_a_lot(struct channel * parent, void * context __attribute((unused))) {
     for (size_t ipass = 0; ipass < YIELD_COUNT; ipass++) {
@@ -46,7 +46,7 @@ int main(void) {
     
     const unsigned long long time_elapsed = current_monotonic_time_in_nanoseconds() - time_start;
     
-    fprintf(stderr, "%s: %.1f ns per round-trip between coroutines (%.1f ns per switch)\n", __func__, time_elapsed / (double)YIELD_COUNT, time_elapsed / (2.0 * YIELD_COUNT));
+    fprintf(stderr, "%s: %.3f ns per round-trip between coroutines (%.3f ns per switch)\n", __func__, time_elapsed / (double)YIELD_COUNT, time_elapsed / (2.0 * YIELD_COUNT));
 
     return 0;
 }
