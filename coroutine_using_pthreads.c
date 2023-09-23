@@ -1,6 +1,8 @@
 /* campbell, boyle 2021
- Implements the same coroutine.h api as the canonical coroutine.c, but uses pthreads. Context switching is about a thousand times slower and hard-realtime guarantees cannot be met, but this implementation should work anywhere posix is served
- 
+ Implements the same coroutine.h api as the canonical coroutine.c, but uses pthreads. Context
+ switching is about a thousand times slower and hard-realtime guarantees cannot be met, but
+ this implementation should work anywhere posix is served
+
  ISC license
  */
 
@@ -27,10 +29,12 @@ struct channel {
     pthread_t thread;
     int in_child;
     
-    /* the actual function to run. this pointer is nulled when the function has returned (a condition used within from()) */
+    /* the actual function to run. this pointer is nulled when the function has returned
+     (a condition used within from()) */
     void (* func)(struct channel *, void *);
     
-    /* argument to pass to the above function, also used to pass values between parent and child via yield(). this is set to the special value not_filled when it is logically empty */
+    /* argument to pass to the above function, also used to pass values between parent and
+     child via yield(). this is set to the special value not_filled when it is logically empty */
     void * value;
 };
 
@@ -146,7 +150,8 @@ void * from(struct channel * channel) {
 }
 
 void close_and_join(struct channel * channel) {
-    /* for parent-to-child data flow, if child is waiting in from(), give it a NULL, which it should react to by cleaning up and returning */
+    /* for parent-to-child data flow, if child is waiting in from(), give it a NULL, which it
+     should react to by cleaning up and returning */
     while (channel->func) yield_to(channel, NULL);
     channel_join_and_cleanup(channel);
 }
