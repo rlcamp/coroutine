@@ -2,12 +2,13 @@
 
 void decouple_handlers_from_program_stack(void) {
 #ifdef __arm__
-    /* calling this function before any stack switching ensures that interrupt handlers effectively get their own single dedicated
-     call stack, rather than each coroutine stack needing to have enough extra headroom to support running the largest interrupt
-     handler. this can significantly reduce the total amount of sram required to dedicate to coroutine call stacks on an embedded
-     processor. call this from main(), or setup() in arduino code. should work on all cortex-m processors. you still need to make
-     sure task stacks have at least 104 extra bytes for register storage (less if not using FPU or there isn't one) */
-    
+    /* calling this function before any stack switching ensures that interrupt handlers
+     effectively get their own single dedicated call stack, rather than each coroutine stack
+     needing to have enough extra headroom to support running the largest interrupt handler.
+     this can significantly reduce the total amount of sram required to dedicate to coroutine
+     call stacks on an embedded processor. call this from main(), or setup() in arduino code.
+     should work on all cortex-m processors. you still need to make sure task stacks have at
+     least 104 extra bytes for register storage (less if not using FPU or there isn't one) */
     static char handler_stack[4096] __attribute((aligned(16)));
     asm volatile("cpsid i\n" /* disable irq */
                  "mrs r0, msp\n" /* assuming we are in thread mode using msp, copy current sp */
