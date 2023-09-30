@@ -132,9 +132,9 @@ asm volatile( \
 #define STACK_ALIGNMENT 16
 
 #if __thumb__
-#define SET_R6_LSB_IF_THUMB "orr r6, #1\n"
+#define ADD_ONE_TO_R6_IF_THUMB "add r6, #1\n"
 #else
-#define SET_R6_LSB_IF_THUMB ""
+#define ADD_ONE_TO_R6_IF_THUMB ""
 #endif
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
@@ -173,7 +173,7 @@ asm volatile( \
 "ldr r6, [%0]\n" /* load the previously saved pc from the context buffer */ \
 "adr r4, 0f\n" /* compute the value of the pc to save for future restoration */ \
 "str r4, [%0]\n" /* save the value of the pc to use when restoring this context */ \
-SET_R6_LSB_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
+ADD_ONE_TO_R6_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
 "bx r6\n" /* jump to the previously saved pc value */ \
 ".balign 4\n" \
 "0:\n" \
