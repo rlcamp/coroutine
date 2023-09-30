@@ -138,8 +138,8 @@ asm volatile( \
 #endif
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
-register void * _buf asm("r0") = buf; \
-register void * _func asm("r1") = func; \
+register void * _buf asm("r0") = buf; /* ensure the compiler places this where it will be the argument to func */ \
+register void * _func asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
 asm volatile( \
 "adr r4, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "str r4, [%0]\n" /* save the jump target in the context buffer */ \
