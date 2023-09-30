@@ -141,17 +141,17 @@ asm volatile( \
 register void * _buf asm("r0") = buf; \
 register void * _func asm("r1") = func; \
 asm volatile( \
-"adr r4, 0f\n" \
-ADD_ONE_TO_R4_IF_THUMB \
-"str r4, [%0]\n" \
-"mov r5, sp\n" \
-"str r5, [%0, #4]\n" \
-"str r7, [%0, #8]\n" \
-"mov r3, r11\n" \
-"str r3, [%0, #12]\n" \
-"mov sp, %0\n" \
-"mov r6, %1\n" \
-"bx r6\n" \
+"adr r4, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+ADD_ONE_TO_R4_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
+"str r4, [%0]\n" /* save the jump target in the context buffer */ \
+"mov r5, sp\n" /* grab the current stack pointer... */ \
+"str r5, [%0, #4]\n" /* and save it the context buffer */ \
+"str r7, [%0, #8]\n" /* save r7, which might be the frame pointer, in the context buffer (frame pointers cannot be clobbered, hence saving them explicitly) */ \
+"mov r3, r11\n" /* grab r11, another possible frame pointer... */ \
+"str r3, [%0, #12]\n" /* and save it the context buffer */ \
+"mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
+"mov r6, %1\n" /* set the jump target to the address of the child function... */ \
+"bx r6\n" /* and jump to it */ \
 ".balign 4\n" /* thumb-1 requires this additional alignment constraint for adr targets */ \
 "0:\n" \
 : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
@@ -159,23 +159,23 @@ ADD_ONE_TO_R4_IF_THUMB \
 #define SWAP_CONTEXT(buf) do { \
 register void * _buf asm("r0") = buf; \
 asm volatile( \
-"ldr r6, [%0, #12]\n" \
-"mov r4, r11\n" \
-"str r4, [%0, #12]\n" \
-"mov r11, r6\n" \
-"ldr r6, [%0, #8]\n" \
+"ldr r6, [%0, #12]\n" /* load the saved value of r11 from the context buffer */ \
+"mov r4, r11\n" /* grab the current value of r11, which might be the frame pointer... */ \
+"str r4, [%0, #12]\n" /* and save it in the context buffer */ \
+"mov r11, r6\n" /* restore the previously saved value of r11 */ \
+"ldr r6, [%0, #8]\n" /* same as above but for r7, another possible frame pointer */ \
 "mov r4, r7\n" \
 "str r4, [%0, #8]\n" \
 "mov r7, r6\n" \
-"ldr r6, [%0, #4]\n" \
-"mov r4, sp\n" \
-"str r4, [%0, #4]\n" \
-"mov sp, r6\n" \
-"ldr r6, [%0]\n" \
-"adr r4, 0f\n" \
+"ldr r6, [%0, #4]\n" /* load the saved stack pointer from the context buffer */ \
+"mov r4, sp\n" /* grab the current value of the stack pointer... */ \
+"str r4, [%0, #4]\n" /* and save it in the context buffer */ \
+"mov sp, r6\n" /* restore the previously saved stack pointer */ \
+"ldr r6, [%0]\n" /* load the previously saved pc from the context buffer */ \
+"adr r4, 0f\n" /* compute the value of the pc to save for future restoration */ \
 ADD_ONE_TO_R4_IF_THUMB \
-"str r4, [%0]\n" \
-"bx r6\n" \
+"str r4, [%0]\n" /* save the value of the pc to use when restoring this context */ \
+"bx r6\n" /* jump to the previously saved pc value */ \
 ".balign 4\n" \
 "0:\n" \
 : "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
