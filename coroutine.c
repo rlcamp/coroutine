@@ -127,55 +127,80 @@ asm volatile( \
 : "+r"(_buf) : : "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x30", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "cc", "memory"); } while (0)
 
 #elif defined(__arm__)
-#define CONTEXT_BUF_SIZE_BYTES 16
-#define STACK_ALIGNMENT 16
+#define CONTEXT_BUF_SIZE_BYTES 4
+#define STACK_ALIGNMENT 8
+
+#if defined(__thumb2__) || !defined(__thumb__)
+/* everything but armv6-m */
 
 #if __thumb__
-#define ADD_ONE_TO_R6_IF_THUMB "add r6, #1\n"
+#define SET_LSB_IN_LR_IF_THUMB "orr lr, #1\n"
 #else
-#define ADD_ONE_TO_R6_IF_THUMB ""
+#define SET_LSB_IN_LR_IF_THUMB ""
 #endif
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r0") = buf; /* ensure the compiler places this where it will be the argument to func */ \
 register void * _func asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
 asm volatile( \
-"adr r4, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
-"str r4, [%0]\n" /* save the jump target in the context buffer */ \
+"adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
+"push {r11, lr}\n" /* save the future pc value as well as possible frame pointer (which is not allowed in the clobber list) */ \
 "mov r5, sp\n" /* grab the current stack pointer... */ \
-"str r5, [%0, #4]\n" /* and save it the context buffer */ \
-"str r7, [%0, #8]\n" /* save r7, which might be the frame pointer, in the context buffer (frame pointers cannot be clobbered, hence saving them explicitly) */ \
-"mov r3, r11\n" /* grab r11, another possible frame pointer... */ \
-"str r3, [%0, #12]\n" /* and save it the context buffer */ \
+"str r5, [%0]\n" /* and save it the context buffer */ \
 "mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
 "bx %1\n" /* jump to the child function */ \
-".balign 4\n" /* thumb-1 requires this additional alignment constraint for adr targets */ \
-"0:\n" \
-: "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+".balign 4\n" /* not sure if this is necessary except on thumb-1 */ \
+"0:\n" : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
 #define SWAP_CONTEXT(buf) do { \
 register void * _buf asm("r0") = buf; \
 asm volatile( \
-"ldr r6, [%0, #12]\n" /* load the saved value of r11 from the context buffer */ \
-"mov r4, r11\n" /* grab the current value of r11, which might be the frame pointer... */ \
-"str r4, [%0, #12]\n" /* and save it in the context buffer */ \
-"mov r11, r6\n" /* restore the previously saved value of r11 */ \
-"ldr r6, [%0, #8]\n" /* same as above but for r7, another possible frame pointer */ \
-"mov r4, r7\n" \
-"str r4, [%0, #8]\n" \
-"mov r7, r6\n" \
-"ldr r6, [%0, #4]\n" /* load the saved stack pointer from the context buffer */ \
+"adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
+"push {r11, lr}\n" /* save the future pc value as well as possible frame pointer (which is not allowed in the clobber list) */ \
+"ldr r6, [%0]\n" /* load the saved stack pointer from the context buffer */ \
 "mov r4, sp\n" /* grab the current value of the stack pointer... */ \
-"str r4, [%0, #4]\n" /* and save it in the context buffer */ \
+"str r4, [%0]\n" /* and save it in the context buffer */ \
 "mov sp, r6\n" /* restore the previously saved stack pointer */ \
-"ldr r6, [%0]\n" /* load the previously saved pc from the context buffer */ \
-"adr r4, 0f\n" /* compute the value of the pc to save for future restoration */ \
-"str r4, [%0]\n" /* save the value of the pc to use when restoring this context */ \
-ADD_ONE_TO_R6_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
-"bx r6\n" /* jump to the previously saved pc value */ \
+"pop {r11, pc}\n" /* jump to the previously saved pc value */ \
 ".balign 4\n" \
-"0:\n" \
-: "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+"0:\n" : "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+
+#else
+/* armv6-m */
+
+#define BOOTSTRAP_CONTEXT(buf, func) do { \
+register void * _buf asm("r0") = buf; /* ensure the compiler places this where it will be the argument to func */ \
+register void * _func asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
+asm volatile( \
+"adr r6, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+"add r6, #1\n" /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
+"push {r6}\n" /* save the resulting future pc for restoration when switching back to here */ \
+"push {r7}\n" /* explicitly save the frame pointer too (which is not allowed in the clobber list) */ \
+"mov r5, sp\n" /* grab the current stack pointer... */ \
+"str r5, [%0]\n" /* and save it the context buffer */ \
+"mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
+"bx %1\n" /* jump to the child function */ \
+".balign 4\n" /* thumb-1 requires this additional alignment constraint for adr targets */ \
+"0:\n" : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r11", "r12", "lr", "cc", "memory"); } while(0)
+
+#define SWAP_CONTEXT(buf) do { \
+register void * _buf asm("r0") = buf; \
+asm volatile( \
+"adr r6, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+"add r6, #1\n" /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
+"push {r6}\n" /* save the resulting future pc for restoration when switching back to here */ \
+"push {r7}\n" /* explicitly save the frame pointer too (which is not allowed in the clobber list) */ \
+"ldr r6, [%0]\n" /* load the saved stack pointer from the context buffer */ \
+"mov r4, sp\n" /* grab the current value of the stack pointer... */ \
+"str r4, [%0]\n" /* and save it in the context buffer */ \
+"mov sp, r6\n" /* restore the previously saved stack pointer */ \
+"pop {r7, pc}\n" /* jump to the previously saved pc value */ \
+".balign 4\n" \
+"0:\n" : "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r11", "r12", "lr", "cc", "memory"); } while(0)
+
+#endif
 
 #elif defined(__i386__)
 
