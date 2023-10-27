@@ -104,8 +104,7 @@ asm volatile( \
 "mov x5, sp\n" /* get the current stack pointer */ \
 "stp x4, x5, [%0]\n" /* store the old pc and sp */ \
 "stp x29, x18, [%0, #16]\n" /* store the old fp and r18 (which cannot be clobbered on apple, and harmless to special case it on others) */ \
-"mov x5, %0\n" /* load new sp */ \
-"mov sp, x5\n" /* switch to the new sp */ \
+"mov sp, %0\n" /* switch to the new sp */ \
 "br %1\n" /* jump to the child function */ \
 "0:\n" \
 : "+r"(_buf), "+r"(_func) : : "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x30", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "cc", "memory"); } while (0)
