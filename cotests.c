@@ -425,8 +425,11 @@ void consumer_silent(void) {
 
 #include <complex.h>
 
-#ifndef CMPLXF
-#define CMPLXF(r, i) __builtin_complex(r, i)
+/* workaround for newlib and certain uncooperative combinations of compiler and libc */
+#if !defined(CMPLXF) && __has_builtin(__builtin_complex)
+#define CMPLXF __builtin_complex
+#elif !defined(CMPLXF)
+#define CMPLXF(r, i) (float complex)((float)(r) + (float complex)I * (i))
 #endif
 
 static void fft8_with_intermission(struct channel * bathroom, float complex y[8], const float complex x[8]) {
