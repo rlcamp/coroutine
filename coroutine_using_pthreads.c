@@ -18,13 +18,8 @@
 /* sentinel value */
 static void * const not_filled = &(void *){ NULL };
 
-static __thread struct tree_mutex {
-    pthread_mutex_t mutex;
-    unsigned long count;
-} * _tls_tree_mutex = NULL;
-
 struct channel {
-    struct tree_mutex * tree_mutex;
+    pthread_mutex_t mutex;
     pthread_cond_t cond;
     pthread_t thread;
     int in_child;
@@ -46,7 +41,7 @@ static void context_switch(struct channel * channel) {
     channel->in_child = !channel->in_child;
 
     pthread_cond_signal(&channel->cond);
-    do pthread_cond_wait(&channel->cond, &channel->tree_mutex->mutex);
+    do pthread_cond_wait(&channel->cond, &channel->mutex);
     while (channel->in_child != in_child_at_entry);
 }
 
@@ -57,8 +52,7 @@ void coroutine_switch(struct channel * channel) {
 
 static void * springboard(void * channelv) {
     struct channel * channel = channelv;
-    _tls_tree_mutex = channel->tree_mutex;
-    pthread_mutex_lock(&channel->tree_mutex->mutex);
+    pthread_mutex_lock(&channel->mutex);
 
     void * arg = channel->value;
     channel->value = not_filled;
@@ -71,26 +65,21 @@ static void * springboard(void * channelv) {
     
     channel->in_child = 0;
     pthread_cond_signal(&channel->cond);
-    pthread_mutex_unlock(&channel->tree_mutex->mutex);
+    pthread_mutex_unlock(&channel->mutex);
 
     return NULL;
 }
 
 struct channel * coroutine_create(void (* func)(struct channel *, void *), void * arg) {
-    if (!_tls_tree_mutex) {
-        _tls_tree_mutex = calloc(sizeof(struct tree_mutex), 1);
-        pthread_mutex_init(&_tls_tree_mutex->mutex, NULL);
-        pthread_mutex_lock(&_tls_tree_mutex->mutex);
-    }
-
     struct channel * channel = malloc(sizeof(struct channel));
     *channel = (struct channel) {
-        .tree_mutex = _tls_tree_mutex,
         .func = func,
         .value = arg,
         .in_child = 1,
     };
-    channel->tree_mutex->count++;
+
+    pthread_mutex_init(&channel->mutex, NULL);
+    pthread_mutex_lock(&channel->mutex);
 
     pthread_cond_init(&channel->cond, NULL);
 
@@ -101,7 +90,7 @@ struct channel * coroutine_create(void (* func)(struct channel *, void *), void 
     pthread_attr_destroy(&attr);
 
     pthread_cond_signal(&channel->cond);
-    do pthread_cond_wait(&channel->cond, &channel->tree_mutex->mutex);
+    do pthread_cond_wait(&channel->cond, &channel->mutex);
     while (channel->in_child);
 
     return channel;
@@ -120,13 +109,9 @@ void yield_to(struct channel * channel, void * pointer) {
 
 static void channel_join_and_cleanup(struct channel * channel) {
     pthread_join(channel->thread, NULL);
-    channel->tree_mutex->count--;
-    if (!channel->tree_mutex->count) {
-        pthread_mutex_unlock(&channel->tree_mutex->mutex);
-        pthread_mutex_destroy(&channel->tree_mutex->mutex);
-        free(channel->tree_mutex);
-        _tls_tree_mutex = NULL;
-    }
+
+    pthread_mutex_unlock(&channel->mutex);
+    pthread_mutex_destroy(&channel->mutex);
     pthread_cond_destroy(&channel->cond);
     free(channel);
 }
