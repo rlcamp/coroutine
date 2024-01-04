@@ -15,12 +15,23 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#define sem_t dispatch_semaphore_t
+#define sem_init(x, p, v) ({ *(x) = dispatch_semaphore_create(v); })
+#define sem_post(x) dispatch_semaphore_signal(*(x))
+#define sem_wait(x) dispatch_semaphore_wait(*(x), DISPATCH_TIME_FOREVER)
+#define sem_destroy(x) dispatch_release(*(x))
+#else
+#include <semaphore.h>
+#endif
+
 /* sentinel value */
 static void * const not_filled = &(void *){ NULL };
 
 struct channel {
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
+    sem_t sem[2];
+
     pthread_t thread;
     int in_child;
     
@@ -40,9 +51,8 @@ static void context_switch(struct channel * channel) {
     
     channel->in_child = !channel->in_child;
 
-    pthread_cond_signal(&channel->cond);
-    do pthread_cond_wait(&channel->cond, &channel->mutex);
-    while (channel->in_child != in_child_at_entry);
+    sem_post(channel->sem + !in_child_at_entry);
+    sem_wait(channel->sem + in_child_at_entry);
 }
 
 void coroutine_switch(struct channel * channel) {
@@ -52,8 +62,6 @@ void coroutine_switch(struct channel * channel) {
 
 static void * springboard(void * channelv) {
     struct channel * channel = channelv;
-    pthread_mutex_lock(&channel->mutex);
-
     void * arg = channel->value;
     channel->value = not_filled;
 
@@ -62,10 +70,8 @@ static void * springboard(void * channelv) {
 
     /* reached when coroutine function finishes. the parent may be watching for this condition */
     channel->func = NULL;
-    
-    channel->in_child = 0;
-    pthread_cond_signal(&channel->cond);
-    pthread_mutex_unlock(&channel->mutex);
+
+    sem_post(channel->sem + 0);
 
     return NULL;
 }
@@ -78,10 +84,8 @@ struct channel * coroutine_create(void (* func)(struct channel *, void *), void 
         .in_child = 1,
     };
 
-    pthread_mutex_init(&channel->mutex, NULL);
-    pthread_mutex_lock(&channel->mutex);
-
-    pthread_cond_init(&channel->cond, NULL);
+    sem_init(channel->sem + 0, 0, 0);
+    sem_init(channel->sem + 1, 0, 0);
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -89,9 +93,7 @@ struct channel * coroutine_create(void (* func)(struct channel *, void *), void 
     pthread_create(&channel->thread, &attr, springboard, channel);
     pthread_attr_destroy(&attr);
 
-    pthread_cond_signal(&channel->cond);
-    do pthread_cond_wait(&channel->cond, &channel->mutex);
-    while (channel->in_child);
+    sem_wait(channel->sem + 0);
 
     return channel;
 }
@@ -109,10 +111,8 @@ void yield_to(struct channel * channel, void * pointer) {
 
 static void channel_join_and_cleanup(struct channel * channel) {
     pthread_join(channel->thread, NULL);
-
-    pthread_mutex_unlock(&channel->mutex);
-    pthread_mutex_destroy(&channel->mutex);
-    pthread_cond_destroy(&channel->cond);
+    sem_destroy(channel->sem + 0);
+    sem_destroy(channel->sem + 1);
     free(channel);
 }
 
