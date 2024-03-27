@@ -63,7 +63,7 @@
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("rdx") = buf; /* force the argument into this register. this is necessary so that it doesn't choose rbp even though it's not in the clobber list */ \
-register void * _func asm("rsi") = func; /* force the argument into this register */ \
+register void (* _func)(void *) asm("rsi") = func; /* force the argument into this register */ \
 asm volatile( \
 "lea 1f(%%rip), %%r8\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "movq %%r8, 0(%0)\n" /* store it to the beginning of the buffer */ \
@@ -98,7 +98,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("x0") = buf; \
-register void * _func asm("x1") = func; \
+register void (* _func)(void *) asm("x1") = func; \
 asm volatile( \
 "adr x4, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "mov x5, sp\n" /* get the current stack pointer */ \
@@ -140,7 +140,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r0") = buf; /* ensure the compiler places this where it will be the argument to func */ \
-register void * _func asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
+register void (* _func)(void *) asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
 asm volatile( \
 "adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
@@ -171,7 +171,7 @@ SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the ju
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r0") = buf; /* ensure the compiler places this where it will be the argument to func */ \
-register void * _func asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
+register void (* _func)(void *) asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
 asm volatile( \
 "adr r6, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "add r6, #1\n" /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
@@ -220,7 +220,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("edx") = buf; \
-register void * _func asm("esi") = func; \
+register void (* _func)(void *) asm("esi") = func; \
 asm volatile( \
 "call 0f\n" /* in i386 and other architectures, we need to do some trickery to load the address of a label */ \
 "0: pop %%eax\n" \
@@ -261,7 +261,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("x10") = buf; \
-register void * _func asm("x11") = func; \
+register void (* _func)(void *) asm("x11") = func; \
 asm volatile( \
 "la x6, 1f\n" \
 "sd x6, 0(%0)\n" \
@@ -299,7 +299,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("d0") = buf; \
-register void * _func asm("d1") = func; \
+register void (* _func)(void *) asm("d1") = func; \
 asm volatile( \
 "lea 1f, %%a0\n" \
 "move.l %%a0, 0(%0)\n" \
@@ -339,7 +339,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r30") = buf; /* address of the context struct (placed immediately above the new stack) */ \
-register void * _func asm("r22") = func; /* function pointer to the function to run on the new stack */ \
+register void (* _func)(void *) asm("r22") = func; /* function pointer to the function to run on the new stack */ \
 asm volatile( \
 "ldi r24, pm_lo8(1f)\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "ldi r25, pm_hi8(1f)\n" \
@@ -402,7 +402,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r3") = buf; \
-register void * _func asm("r4") = func; \
+register void (* _func)(void *) asm("r4") = func; \
 asm volatile( \
 "bl 0f\n" /* calculate address of end of this block, so we can jump back to it from the created child */ \
 "0: mflr 8\n" \
@@ -449,7 +449,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("4") = buf; \
-register void * _func asm("5") = func; \
+register void (* _func)(void *) asm("5") = func; \
 asm volatile( \
 "nop\n" /* wtf */ \
 "jal 0f\n" \
@@ -499,7 +499,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("4") = buf; \
-register void * _func asm("5") = func; \
+register void (* _func)(void *) asm("5") = func; \
 asm volatile( \
 "bsr 0f\n" \
 "nop\n" /* branch delay slot */ \
@@ -546,7 +546,7 @@ asm volatile( \
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("3") = buf; \
-register void * _func asm("4") = func; \
+register void (* _func)(void *) asm("4") = func; \
 asm volatile( \
 "l.jal 0f\n" \
 "l.nop\n" /* branch delay slot */ \
@@ -609,7 +609,8 @@ void coroutine_switch(struct channel * channel) {
     if (channel->func) SWAP_CONTEXT(channel);
 }
 
-__attribute((noreturn)) static void springboard(struct channel * channel) {
+__attribute((noreturn)) static void springboard(void * v) {
+    struct channel * channel = v;
     void * arg = channel->value;
     channel->value = not_filled;
     
