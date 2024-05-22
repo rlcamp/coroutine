@@ -1,5 +1,5 @@
 /*
- Copyright 2015-2023 Richard Campbell
+ Copyright 2015-2024 Richard Campbell
  
  Permission to use, copy, modify, and/or distribute this software for any purpose with or without
  fee is hereby granted, provided that the above copyright notice and this permission notice appear
@@ -144,27 +144,27 @@ register void (* _func)(void *) asm("r1") = func; /* ensure the compiler does no
 asm volatile( \
 "adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
-"push {r11, lr}\n" /* save the future pc value as well as possible frame pointer (which is not allowed in the clobber list) */ \
+"push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
 "mov r5, sp\n" /* grab the current stack pointer... */ \
 "str r5, [%0]\n" /* and save it the context buffer */ \
 "mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
 "bx %1\n" /* jump to the child function */ \
 ".balign 4\n" /* not sure if this is necessary except on thumb-1 */ \
-"0:\n" : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+"0:\n" : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
 #define SWAP_CONTEXT(buf) do { \
 register void * _buf asm("r0") = buf; \
 asm volatile( \
 "adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
-"push {r11, lr}\n" /* save the future pc value as well as possible frame pointer (which is not allowed in the clobber list) */ \
+"push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
 "ldr r6, [%0]\n" /* load the saved stack pointer from the context buffer */ \
 "mov r4, sp\n" /* grab the current value of the stack pointer... */ \
 "str r4, [%0]\n" /* and save it in the context buffer */ \
 "mov sp, r6\n" /* restore the previously saved stack pointer */ \
-"pop {r11, pc}\n" /* jump to the previously saved pc value */ \
+"pop {r7, r11, pc}\n" /* jump to the previously saved pc value */ \
 ".balign 4\n" \
-"0:\n" : "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
+"0:\n" : "+r"(_buf) : : "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
 #else
 /* armv6-m */
