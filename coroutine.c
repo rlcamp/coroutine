@@ -133,18 +133,17 @@ asm volatile( \
 /* everything but armv6-m */
 
 #if __thumb__
-#define SET_LSB_IN_LR_IF_THUMB "orr lr, #1\n"
+#define ADR_LR_0F_WITH_THUMB_BIT_SET "add lr, pc, (0f - 1f) | 1\n"
 #else
-#define SET_LSB_IN_LR_IF_THUMB ""
+#define ADR_LR_0F_WITH_THUMB_BIT_SET "adr lr, 0f\n"
 #endif
 
 #define BOOTSTRAP_CONTEXT(buf, func) do { \
 register void * _buf asm("r0") = buf; /* ensure the compiler places this where it will be the argument to func */ \
 register void (* _func)(void *) asm("r1") = func; /* ensure the compiler does not place this in a frame pointer register */ \
 asm volatile( \
-"adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
-SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
-"push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
+ADR_LR_0F_WITH_THUMB_BIT_SET /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+"1: push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
 "mov r5, sp\n" /* grab the current stack pointer... */ \
 "str r5, [%0]\n" /* and save it the context buffer */ \
 "mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
@@ -155,9 +154,8 @@ SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the ju
 #define SWAP_CONTEXT(buf) do { \
 register void * _buf asm("r0") = buf; \
 asm volatile( \
-"adr lr, 0f\n" /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
-SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the jump target should remain in thumb mode */ \
-"push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
+ADR_LR_0F_WITH_THUMB_BIT_SET /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
+"1: push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
 "ldr r6, [%0]\n" /* load the saved stack pointer from the context buffer */ \
 "mov r4, sp\n" /* grab the current value of the stack pointer... */ \
 "str r4, [%0]\n" /* and save it in the context buffer */ \
