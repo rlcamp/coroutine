@@ -144,8 +144,7 @@ register void (* _func)(void *) asm("r1") = func; /* ensure the compiler does no
 asm volatile( \
 ADR_LR_0F_WITH_THUMB_BIT_SET /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "1: push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
-"mov r5, sp\n" /* grab the current stack pointer... */ \
-"str r5, [%0]\n" /* and save it the context buffer */ \
+"str sp, [%0]\n" /* store the current stack pointer in the context buffer */ \
 "mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
 "bx %1\n" /* jump to the child function */ \
 ".balign 4\n" \
@@ -157,8 +156,7 @@ asm volatile( \
 ADR_LR_0F_WITH_THUMB_BIT_SET /* compute address of end of this block of asm, which will be jumped to when returning to this context */ \
 "1: push {r7, r11, lr}\n" /* save the future pc value as well as possible frame pointers (which are not allowed in the clobber list) */ \
 "ldr r6, [%0]\n" /* load the saved stack pointer from the context buffer */ \
-"mov r4, sp\n" /* grab the current value of the stack pointer... */ \
-"str r4, [%0]\n" /* and save it in the context buffer */ \
+"str sp, [%0]\n" /* store the current stack pointer in the context buffer */ \
 "mov sp, r6\n" /* restore the previously saved stack pointer */ \
 "pop {r7, r11, pc}\n" /* jump to the previously saved pc value */ \
 ".balign 4\n" \
