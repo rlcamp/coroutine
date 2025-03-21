@@ -149,7 +149,7 @@ SET_LSB_IN_LR_IF_THUMB /* handle thumb addressing where the lsb is set if the ju
 "str r5, [%0]\n" /* and save it the context buffer */ \
 "mov sp, %0\n" /* set the stack pointer to the top of the space below the context buffer */ \
 "bx %1\n" /* jump to the child function */ \
-".balign 4\n" /* not sure if this is necessary except on thumb-1 */ \
+".balign 4\n" \
 "0:\n" : "+r"(_buf), "+r"(_func) : : "r2", "r3", "r4", "r5", "r6", "r8", "r9", "r10", "r12", "lr", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "cc", "memory"); } while(0)
 
 #define SWAP_CONTEXT(buf) do { \
